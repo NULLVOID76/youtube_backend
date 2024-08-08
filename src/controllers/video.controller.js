@@ -81,7 +81,6 @@ const getVideoById = asyncHandler(async (req, res) => {
   if (!videoId.trim()) throw new ApiError(400, "Not valid video id");
   // console.log(videoId);
 
-
   const video = await Video.aggregate([
     {
       $match: {
@@ -115,18 +114,21 @@ const getVideoById = asyncHandler(async (req, res) => {
     },
   ]);
 
-  const user=req?.user;
+  const userId = req.user?._id;
   if (!video.length) throw new ApiError(404, "video not found");
-  console.log(video[0]._id);
-  
-  await User.findByIdAndUpdate(user?._id, {
-    $set: {
-      watchHistory: [video[0]._id,...user.watchHistory]
+  // console.log(video[0]._id);
+
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      $push: {
+        watchHistory: video[0]._id,
+      },
     },
-  },
-  {
-    new: true,
-  })
+    {
+      new: true,
+    }
+  );
   return res
     .status(200)
     .json(new ApiResponse(200, video[0], "video is fetched"));
