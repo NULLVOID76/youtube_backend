@@ -8,7 +8,7 @@ import { User } from "../models/user.model.js";
 const createPlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
   try {
-    if (!name || !description)
+    if (!name || !description || !name.trim() || !description.trim())
       throw new ApiError(403, "Name and Description is requried");
     const playlist = await Playlist.create({
       name,
@@ -16,7 +16,9 @@ const createPlaylist = asyncHandler(async (req, res) => {
       owner: req.user?._id,
     });
     if (!playlist) throw new ApiError(503, "playlist is not created");
-    return res.status(201).json(201, playlist, "playlist is created");
+    return res
+      .status(201)
+      .json(new ApiResponse(201, playlist, "playlist is created"));
   } catch (error) {
     throw new ApiError(503, error || "error while creating playlist ");
   }
@@ -32,7 +34,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     const playlists = await Playlist.aggregate([
       {
         $match: {
-          owner: userId,
+          owner: new mongoose.Types.ObjectId(userId),
         },
       },
     ]);
@@ -61,11 +63,17 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
   try {
-    const playlist = await Playlist.findByIdAndUpdate(playlistId, {
-      $push: {
-        video: videoId,
+    const playlist = await Playlist.findByIdAndUpdate(
+      playlistId,
+      {
+        $push: {
+          video: videoId,
+        },
       },
-    });
+      {
+        new: true,
+      }
+    );
     if (!playlist.video.includes(videoId))
       throw new ApiError(503, "video is not includes");
     return res
@@ -80,11 +88,17 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
   // TODO: remove video from playlist
   try {
-    const playlist = await Playlist.findByIdAndUpdate(playlistId, {
-      $pull: {
-        video: videoId,
+    const playlist = await Playlist.findByIdAndUpdate(
+      playlistId,
+      {
+        $pull: {
+          video: videoId,
+        },
       },
-    });
+      {
+        new: true,
+      }
+    );
     if (playlist.video.includes(videoId))
       throw new ApiError(503, "video is not removed");
     return res
@@ -115,8 +129,8 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   //TODO: update playlist
 
   try {
-    if (!name || !description)
-      throw new ApiError(403, "Name and Description is requried");
+    if (!name && !description)
+      throw new ApiError(403, "Name or Description is requried");
     const playlist = await Playlist.findByIdAndUpdate(
       playlistId,
       {

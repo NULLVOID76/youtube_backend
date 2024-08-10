@@ -8,8 +8,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const createTweet = asyncHandler(async (req, res) => {
   //TODO: create tweet
   const { tweet } = req.body;
+  // console.log(req.body);
+
   try {
-    if (!tweet.trim()) throw new ApiError(403, "tweet can't be empty");
+    if (!tweet || !tweet.trim())
+      throw new ApiError(403, "tweet can't be empty");
     const createdTweet = await Tweet.create({
       content: tweet,
       owner: req.user?._id,
@@ -30,15 +33,15 @@ const getUserTweets = asyncHandler(async (req, res) => {
     const tweets = await Tweet.aggregate([
       {
         $match: {
-          owner: userId,
+          owner: new mongoose.Types.ObjectId(userId),
         },
       },
     ]);
     return res
-      .status(204)
-      .json(new ApiResponse(204, tweets, "All tweets fetched"));
+      .status(203)
+      .json(new ApiResponse(203, tweets, "All tweets fetched"));
   } catch (error) {
-    throw new ApiError(5000000, error || "error while geting tweets");
+    throw new ApiError(500, error || "error while geting tweets");
   }
 });
 
@@ -47,16 +50,25 @@ const updateTweet = asyncHandler(async (req, res) => {
   const { tweet } = req.body;
   const { tweetId } = req.params;
   try {
-    if (!tweet.trim()) throw new ApiError(403, "tweet can't be empty");
-    const updatedTweet = await Tweet.findByIdAndUpdate(tweetId, {
-      $set: {
-        content: tweet,
+    if (!tweet || !tweet.trim())
+      throw new ApiError(403, "tweet can't be empty");
+    console.log(tweet);
+
+    const updatedTweet = await Tweet.findByIdAndUpdate(
+      tweetId,
+      {
+        $set: {
+          content: tweet,
+        },
       },
-    });
+      {
+        new: true,
+      }
+    );
     if (!updatedTweet) throw new ApiError(404, "Tweet is not Updated");
     return res
       .status(201)
-      .json(new ApiResponse(201, updatedTweet, "Invalid Tweet Id"));
+      .json(new ApiResponse(201, updatedTweet, "Tweet is Updated"));
   } catch (error) {
     throw new ApiError(501, error || "error while Updating tweet");
   }
@@ -68,7 +80,9 @@ const deleteTweet = asyncHandler(async (req, res) => {
   try {
     const deletedTweet = await Tweet.findByIdAndDelete(tweetId);
     if (!deletedTweet) throw new ApiError(404, "Invalid Tweet Id");
-    return res.status(201).json(201, deletedTweet, "Tweet is deleted");
+    return res
+      .status(201)
+      .json(new ApiResponse(201, deletedTweet, "Tweet is deleted"));
   } catch (error) {
     throw new ApiError(501, "Error while deleting Tweet");
   }
